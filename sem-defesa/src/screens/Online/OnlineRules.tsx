@@ -6,7 +6,8 @@ import { countQuestions } from '../../data/questions';
 import { MAX_ROUNDS, MIN_ROUNDS } from '../../game/validation/setup';
 import { SectionTitle, Stepper, Toggle } from '../../components/ui/Controls';
 import { CategoryGrid } from '../../components/setup/CategoryGrid';
-import { MenOnlyToggle } from '../../components/setup/MenOnlyToggle';
+import { DrinkingToggle, HeavyToggle, MenOnlyToggle } from '../../components/setup/ModeToggles';
+import { getCategory } from '../../data/categories';
 import { plural } from '../../utils/text';
 
 const MODES: { id: OnlineMode; name: string; desc: string; icon: React.ReactNode }[] = [
@@ -15,7 +16,7 @@ const MODES: { id: OnlineMode; name: string; desc: string; icon: React.ReactNode
 ];
 
 export function availableCards(c: OnlineConfig) {
-  const cats = c.categories.filter((id) => (c.includeHeavy || id !== 'semlimites') && id !== 'resenha');
+  const cats = c.categories.filter((id) => (c.includeHeavy || !getCategory(id).adult) && !getCategory(id).menOnly);
   if (c.menOnly) cats.push('resenha');
   return countQuestions(cats, c.includeHeavy);
 }
@@ -95,24 +96,12 @@ export function OnlineRules({ value, onChange }: { value: OnlineConfig; onChange
 
       <section>
         <SectionTitle aside={plural(cards, 'carta', 'cartas')}>Categorias</SectionTitle>
-        <div className="mb-3">
+        <div className="mb-3 flex flex-col gap-2">
+          <DrinkingToggle checked={Boolean(value.drinking)} categories={value.categories} onChange={(drinking, categories) => set({ drinking, categories })} />
           <MenOnlyToggle checked={Boolean(value.menOnly)} includeHeavy={value.includeHeavy} onChange={(menOnly) => set({ menOnly })} />
+          <HeavyToggle checked={value.includeHeavy} categories={value.categories} onChange={(includeHeavy, categories) => set({ includeHeavy, categories })} />
         </div>
         <CategoryGrid selected={value.categories} includeHeavy={value.includeHeavy} onChange={(categories) => set({ categories })} />
-        <div className="mt-3">
-          <Toggle
-            checked={value.includeHeavy}
-            onChange={(v) =>
-              set({
-                includeHeavy: v,
-                categories: v && !value.categories.includes('semlimites') ? [...value.categories, 'semlimites'] : value.categories,
-              })
-            }
-            label="Conteúdo pesado (+18)"
-            description="Libera perguntas mais ácidas e a categoria Sem limites."
-            icon={<Flame />}
-          />
-        </div>
       </section>
     </div>
   );

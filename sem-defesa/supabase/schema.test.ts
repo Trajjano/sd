@@ -45,6 +45,40 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('salas online (SQL)', () => {
+  it('atualiza um banco criado com a versão anterior do schema', async () => {
+    const old = new PGlite();
+    await old.exec('create role anon nologin; create role authenticated nologin;');
+    await old.exec(readFileSync(new URL('./fixtures/schema-v1.sql', import.meta.url), 'utf8'));
+    await old.exec(readFileSync(new URL('./migrations/002_bonequinhos_justificativas_bebida.sql', import.meta.url), 'utf8'));
+    const c = await old.query<{ n: number }>(`select count(*)::int as n from information_schema.columns where table_name = 'room_votes' and column_name = 'comment'`);
+    expect(c.rows[0].n).toBe(1);
+    await old.exec(sql);
+    const fns = await old.query<{ n: number }>(`select count(*)::int as n from pg_proc where proname = 'sd_vote'`);
+    expect(fns.rows[0].n).toBe(1);
+    await old.close();
+  });
+
+  it('guarda bonequinho e publica justificativas sem dizer quem escreveu', async () => {
+    const a = await rpc<Creds>('sd_create_room', 'Ana', cfg({ drinking: true }), 'alien');
+    const b = await rpc<Creds>('sd_join_room', a.code, 'Bia', 'gato');
+    const c = await rpc<Creds>('sd_join_room', a.code, 'Caio', '<script>');
+    const av = await db.query<{ name: string; avatar: string | null }>('select name, avatar from public.room_players where room_id = $1 order by seat', [a.room_id]);
+    expect(av.rows.map((r) => r.avatar)).toEqual(['alien', 'gato', null]);
+    await rpc('sd_set_avatar', a.room_id, c.player_id, c.secret, 'dino');
+    expect((await room(a.room_id)).config.drinking).toBe(true);
+    await rpc('sd_start', a.room_id, a.player_id, a.secret, deck);
+    await rpc('sd_vote', a.room_id, a.player_id, a.secret, b.player_id, '  zzz   porque sim  ');
+    await rpc('sd_vote', a.room_id, b.player_id, b.secret, c.player_id, null);
+    await rpc('sd_vote', a.room_id, c.player_id, c.secret, b.player_id, 'aaa ' + 'x'.repeat(200));
+    const r = await room(a.room_id);
+    const comments = r.history[0].comments;
+    expect(comments).toHaveLength(2);
+    expect(comments[0].text.startsWith('aaa')).toBe(true);
+    expect(comments[0].text.length).toBe(80);
+    expect(comments[1]).toEqual({ targetId: b.player_id, text: 'zzz porque sim' });
+    expect(JSON.stringify(r.history[0])).not.toContain(a.player_id + '","text');
+  });
+
   it('cria sala com código de 5 letras e entra por código', async () => {
     const [host, b] = await setupRoom(['Ana', 'Bia']);
     expect(host.code).toMatch(/^[A-Z2-9]{5}$/);

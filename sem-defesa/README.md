@@ -30,12 +30,16 @@ Build alternativo em arquivo único (sem service worker): `ARTIFACT=1 npx vite b
 ## Funcionalidades
 
 - **Modo online**: sala com código de 5 letras e QR code, convite pelo WhatsApp (botão compartilhar), lobby ao vivo, anfitrião remove jogadores e muda regras, cada um vota no próprio celular, revelação ao mesmo tempo para todos, "jogar de novo" e "voltar à sala". Se alguém sair no meio, a rodada fecha com quem ficou; o anfitrião também pode encerrar a votação sem esperar. Votos ficam numa tabela que o navegador não consegue ler: só a contagem é publicada.
+- **Bonequinhos**: 16 personagens desenhados (alien, gato, capivara, robô, diabinho…). Cada jogador escolhe o seu; quem não escolhe recebe um automaticamente.
+- **Justificativa do voto**: campo opcional ao votar. Na revelação os motivos aparecem sem o nome de quem escreveu (em ordem alfabética, para não entregar a ordem de votação).
+- **Modo bebida**: a cada revelação mostra quem bebe (mais votado: 1 gole por voto, máx. 4; unanimidade vira o copo; empate, 2 goles cada; na sobrevivência quem sai vira o copo) e uma "saideira" no fim. Inclui a categoria *Mesa de bar*.
+- **Conteúdo +18**: pede confirmação de que todos são maiores de idade e libera *Sem limites* e *Baixaria total* (palavrão e sacanagem).
 - **Só homens**: opção ao criar a sala (e na partida local) que intercala o pacote *Resenha dos caras* (26 perguntas) com as categorias escolhidas — uma carta da resenha a cada duas.
 - **Três modos**
   - *Votação secreta*: tela de privacidade "Passe o celular para…", voto escondido, selo "Voto guardado" que cobre a escolha.
   - *Votação aberta*: todos apontam juntos, uma pessoa registra o placar (no máximo um voto por jogador).
   - *Sobrevivência social*: o mais votado sai da disputa (continua votando, não recebe mais votos). Empate não elimina. Termina quando sobra uma pessoa ou acabam as rodadas.
-- **206 perguntas originais**: 9 categorias com 20 cada, mais o pacote Resenha dos caras (26), incluindo "Sem limites" (+18) e perguntas pesadas que só aparecem com o conteúdo pesado ligado. Cartas vistas recentemente vão pro fim do baralho.
+- **256 perguntas originais**: 9 categorias com 20 cada, Baixaria total (30), Mesa de bar (20) e o pacote Resenha dos caras (26), incluindo "Sem limites" (+18) e perguntas pesadas que só aparecem com o conteúdo pesado ligado. Cartas vistas recentemente vão pro fim do baralho.
 - **Revelação**: suspense, cartas virando em 3D da menos votada para a mais votada, contadores animados, carimbo "Culpado" / "Empate" / "Queimado", confete, mensagens contextuais. Empates destacam todos os empatados, sem escolher vencedor.
 - **Tela final**: mais votado (ou sobrevivente), ranking com posições compartilhadas em empate, títulos engraçados por jogador, resumo rodada a rodada, jogar de novo.
 - **Persistência local**: configurações, última configuração de partida, estatísticas acumuladas (com botão para apagar) e partida em andamento (retoma após recarregar a página).

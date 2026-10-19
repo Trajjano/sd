@@ -79,3 +79,4 @@ No fim, você recebe um endereço como `https://sem-defesa.vercel.app`. Dá pra 
 - Salas sem atividade por 24 horas são apagadas automaticamente.
 - No plano grátis, o Supabase pode pausar o projeto depois de um tempo sem uso. Se o modo online parar de funcionar, entre no painel e clique em **Restore/Resume**.
 - Para mudar perguntas, edite `src/data/questions/` e publique de novo. Para mudar regras do servidor, edite `supabase/schema.sql` e rode-o de novo no SQL Editor.
+- **Atualizações do banco**: quem já tinha rodado uma versão anterior pode rodar só o arquivo novo de `supabase/migrations/` (ou o `schema.sql` inteiro de novo, que também funciona). Rode o SQL **antes** de publicar o site novo.

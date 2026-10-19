@@ -13,6 +13,7 @@ import { Scribble } from '../../components/ui/Logo';
 import { Stamp } from '../../components/animations/Effects';
 import { Screen } from '../../components/ui/Screen';
 import { RevealView } from '../Reveal/RevealView';
+import { CommentField } from '../../components/ui/CommentField';
 
 interface Props {
   match: MatchState;
@@ -27,6 +28,10 @@ export function GameScreen({ match, dispatch, onLeave }: Props) {
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => map.get(id) ?? '?';
+  }, [players]);
+  const avatarOf = useMemo(() => {
+    const map = new Map(players.map((p) => [p.id, p.avatar]));
+    return (id: string) => map.get(id);
   }, [players]);
 
   const privacy = match.phase === 'handoff';
@@ -64,12 +69,12 @@ export function GameScreen({ match, dispatch, onLeave }: Props) {
       </header>
 
       <AnimatePresence mode="wait">
-        {match.phase === 'question' && <QuestionView key={`q-${match.round}`} match={match} dispatch={dispatch} nameOf={nameOf} />}
+        {match.phase === 'question' && <QuestionView key={`q-${match.round}`} match={match} dispatch={dispatch} nameOf={nameOf} avatarOf={avatarOf} />}
         {match.phase === 'handoff' && (
-          <HandoffView key={`h-${match.round}-${match.voterIndex}`} match={match} dispatch={dispatch} nameOf={nameOf} />
+          <HandoffView key={`h-${match.round}-${match.voterIndex}`} match={match} dispatch={dispatch} nameOf={nameOf} avatarOf={avatarOf} />
         )}
         {match.phase === 'voting' && (
-          <VotingView key={`v-${match.round}-${match.voterIndex}`} match={match} dispatch={dispatch} nameOf={nameOf} />
+          <VotingView key={`v-${match.round}-${match.voterIndex}`} match={match} dispatch={dispatch} nameOf={nameOf} avatarOf={avatarOf} />
         )}
         {match.phase === 'open-voting' && <OpenVotingView key={`o-${match.round}`} match={match} dispatch={dispatch} />}
         {match.phase === 'reveal' && (
@@ -79,6 +84,8 @@ export function GameScreen({ match, dispatch, onLeave }: Props) {
             nameOf={nameOf}
             isLast={isMatchOver(match)}
             voterCount={match.config.players.length}
+            avatarOf={avatarOf}
+            drinking={match.config.drinking}
             onNext={() => dispatch({ type: 'next' })}
           />
         )}
@@ -123,7 +130,12 @@ export function GameScreen({ match, dispatch, onLeave }: Props) {
   );
 }
 
-type ViewProps = { match: MatchState; dispatch: (a: MatchAction) => void; nameOf: (id: string) => string };
+type ViewProps = {
+  match: MatchState;
+  dispatch: (a: MatchAction) => void;
+  nameOf: (id: string) => string;
+  avatarOf: (id: string) => string | undefined;
+};
 
 const viewMotion = {
   initial: { opacity: 0, y: 24 },
@@ -284,25 +296,26 @@ function HandoffView({ match, dispatch, nameOf }: ViewProps) {
 
 /* ---------------- Voto secreto ---------------- */
 
-function VotingView({ match, dispatch, nameOf }: ViewProps) {
+function VotingView({ match, dispatch, nameOf, avatarOf }: ViewProps) {
   const { sfx, reduced } = useApp();
   const voterId = currentVoterId(match)!;
   const targets = eligibleTargets(match, voterId);
   const [selected, setSelected] = useState<string | null>(null);
   const [sealed, setSealed] = useState(false);
+  const [comment, setComment] = useState('');
   const selfBlocked = !match.config.allowSelfVote && candidateIds(match).includes(voterId);
 
   const confirm = () => {
     if (!selected || sealed) return;
     setSealed(true);
     sfx('confirm', [10, 30, 18]);
-    window.setTimeout(() => dispatch({ type: 'vote', voterId, targetId: selected }), reduced ? 250 : 750);
+    window.setTimeout(() => dispatch({ type: 'vote', voterId, targetId: selected, comment }), reduced ? 250 : 750);
   };
 
   return (
     <motion.section {...viewMotion} className="relative flex flex-1 flex-col">
       <div className="mt-3 flex items-center gap-3">
-        <PlayerAvatar name={nameOf(voterId)} size={44} />
+        <PlayerAvatar name={nameOf(voterId)} avatar={avatarOf(voterId)} size={44} />
         <div className="min-w-0">
           <div className="label text-acid">Vez de votar</div>
           <div className="display truncate text-[30px]">{nameOf(voterId)}</div>
@@ -320,7 +333,7 @@ function VotingView({ match, dispatch, nameOf }: ViewProps) {
         {selfBlocked && <span className="text-[12px] text-white/40">Você não pode votar em si</span>}
       </div>
 
-      <div className={`grid gap-2 pb-28 ${targets.length > 6 ? 'grid-cols-2' : 'grid-cols-1 min-[360px]:grid-cols-2'}`} role="radiogroup" aria-label="Participantes">
+      <div className={`grid gap-2 ${targets.length > 6 ? 'grid-cols-2' : 'grid-cols-1 min-[360px]:grid-cols-2'}`} role="radiogroup" aria-label="Participantes">
         {targets.map((id, i) => {
           const active = selected === id;
           return (
@@ -342,7 +355,7 @@ function VotingView({ match, dispatch, nameOf }: ViewProps) {
                 active ? 'bg-acid text-ink shadow-[0_6px_0_0_var(--color-acid-deep)]' : 'bg-white/[0.06] text-white ring-1 ring-white/10'
               }`}
             >
-              <PlayerAvatar name={nameOf(id)} size={36} />
+              <PlayerAvatar name={nameOf(id)} avatar={avatarOf(id)} size={36} />
               <span className="min-w-0 flex-1 truncate text-[17px] font-extrabold">{nameOf(id)}</span>
               <AnimatePresence>
                 {active && (
@@ -354,6 +367,9 @@ function VotingView({ match, dispatch, nameOf }: ViewProps) {
             </motion.button>
           );
         })}
+      </div>
+      <div className="pb-28">
+        <CommentField show={Boolean(selected)} value={comment} onChange={setComment} targetName={selected ? nameOf(selected) : undefined} />
       </div>
 
       <div className="safe-bottom safe-x fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md bg-gradient-to-t from-ink via-ink/95 to-transparent pt-8">
@@ -427,7 +443,7 @@ function OpenVotingView({ match, dispatch }: { match: MatchState; dispatch: (a: 
       <ul className="flex flex-col gap-2 pb-28">
         {players.map((p) => (
           <li key={p.id} className="flex items-center gap-3 rounded-2xl bg-white/[0.05] p-2 pl-3 ring-1 ring-inset ring-white/10">
-            <PlayerAvatar name={p.name} size={34} />
+            <PlayerAvatar name={p.name} avatar={p.avatar} size={34} />
             <span className="min-w-0 flex-1 truncate text-[17px] font-extrabold">{p.name}</span>
             <button
               type="button"

@@ -1,0 +1,38 @@
+import { defineQuestions } from './define';
+
+// Baixaria total: +18 com palavrão. Todas marcadas como pesadas.
+export default defineQuestions('baixaria', {
+  normal: [],
+  heavy: [
+    'Quem tem menos cara de que chupa buceta?',
+    'Quem tem mais cara de que já transou no banheiro da balada?',
+    'Quem fode mal pra caralho e se acha o rei da cama?',
+    'Quem já broxou e botou a culpa na cerveja?',
+    'Quem manda foto pelado sem ninguém ter pedido?',
+    'Quem já deu uma rapidinha no carro e acha que ninguém sabe?',
+    'Quem geme tão alto que os vizinhos já reclamaram?',
+    'Quem tem a galeria do celular mais cheia de putaria?',
+    'Quem já pegou alguém só pra fazer ciúme no ex e se fodeu?',
+    'Quem tem cara de que faz barulho estranho na hora H?',
+    'Quem manda "tá acordado?" às 4 da manhã com segundas intenções?',
+    'Quem já vomitou no meio da pegação?',
+    'Quem já fingiu que gozou só pra acabar logo com a porra toda?',
+    'Quem tem mais cara de que tem brinquedinho escondido na gaveta?',
+    'Quem pegaria qualquer um aqui depois do quinto copo?',
+    'Quem transa no primeiro date e some no dia seguinte?',
+    'Quem é o mais cagão na hora de chegar em alguém?',
+    'Quem já mandou mensagem de sacanagem no grupo errado?',
+    'Quem é o mais porco e ainda acha que vai pegar alguém?',
+    'Quem dá trabalho na cama… no pior sentido?',
+    'Quem já ficou com alguém que ninguém aqui acreditaria?',
+    'Quem bate uma todo dia e jura que não?',
+    'Quem fala mais merda bêbado e ainda acha que tá abafando?',
+    'Quem já foi pego no flagra pela mãe?',
+    'Quem tem mais cara de que transa de meia?',
+    'Quem se cagaria todo numa situação de perigo?',
+    'Quem já acordou do lado de alguém e não lembrava o nome?',
+    'Quem tem a lista de ficantes mais vergonhosa?',
+    'Quem tem mais cara de que curte levar um tapa na bunda?',
+    'Quem já usou "foi mal, foi o álcool" mais de uma vez na mesma semana?',
+  ],
+});

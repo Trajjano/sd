@@ -7,6 +7,7 @@ import {
   Flag,
   Loader2,
   MoreHorizontal,
+  Pencil,
   Play,
   RotateCcw,
   Settings2,
@@ -36,6 +37,8 @@ import { Stamp } from '../../components/animations/Effects';
 import { RevealView } from '../Reveal/RevealView';
 import { ResultsScreen } from '../Results/ResultsScreen';
 import { OnlineRules } from './OnlineRules';
+import { AvatarPicker } from '../../components/ui/AvatarPicker';
+import { CommentField } from '../../components/ui/CommentField';
 import { plural } from '../../utils/text';
 
 const RECORDED_KEY = 'semdefesa:v1:online-recorded';
@@ -96,6 +99,10 @@ export function OnlineRoomScreen({
   const nameOf = useMemo(() => {
     const m = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => m.get(id) ?? '?';
+  }, [players]);
+  const avatarOf = useMemo(() => {
+    const m = new Map(players.map((p) => [p.id, p.avatar]));
+    return (id: string) => m.get(id);
   }, [players]);
 
   if (!room) {
@@ -169,6 +176,10 @@ export function OnlineRoomScreen({
         busy={busy}
         onStart={() => act(() => online.start(session, deckForRoom(room, loadRecent(store))))}
         onKick={(p) => act(() => online.kick(session, p.id), `${p.name} saiu da sala.`)}
+        onAvatar={(id) => {
+          saveProfile(store, { ...loadProfile(store), avatar: id });
+          void act(() => online.setAvatar(session, id));
+        }}
         onSaveRules={(c) => {
           saveProfile(store, { ...loadProfile(store), config: c });
           return act(() => online.updateConfig(session, c), 'Regras atualizadas.');
@@ -186,8 +197,9 @@ export function OnlineRoomScreen({
         isHost={isHost}
         hostName={hostName}
         nameOf={nameOf}
+        avatarOf={avatarOf}
         busy={busy}
-        onVote={(t) => act(() => online.vote(session, t))}
+        onVote={(t, c) => act(() => online.vote(session, t, c))}
         onSkip={() => act(() => online.skip(session))}
         onClose={() => act(() => online.closeVoting(session))}
       />
@@ -201,6 +213,8 @@ export function OnlineRoomScreen({
         nameOf={nameOf}
         isLast={isLastRound(room)}
         voterCount={room.voter_ids.length}
+        avatarOf={avatarOf}
+        drinking={room.config.drinking}
         onNext={isHost ? () => void act(() => online.next(session)) : undefined}
         waitingFor={hostName}
       />
@@ -359,7 +373,7 @@ function WaitingBar({ text }: { text: string }) {
 function rulesSummary(c: OnlineConfig) {
   const mode = c.mode === 'survival' ? 'Sobrevivência' : 'Votação secreta';
   const cats = c.categories.filter((id) => c.includeHeavy || id !== 'semlimites');
-  return `${mode} · ${plural(c.rounds, 'rodada', 'rodadas')} · ${plural(cats.length, 'categoria', 'categorias')}${c.menOnly ? ' · Só homens' : ''}${c.includeHeavy ? ' · +18' : ''}`;
+  return `${mode} · ${plural(c.rounds, 'rodada', 'rodadas')} · ${plural(cats.length, 'categoria', 'categorias')}${c.drinking ? ' · Modo bebida' : ''}${c.menOnly ? ' · Só homens' : ''}${c.includeHeavy ? ' · +18' : ''}`;
 }
 
 function Lobby({
@@ -371,6 +385,7 @@ function Lobby({
   busy,
   onStart,
   onKick,
+  onAvatar,
   onSaveRules,
   toast,
 }: {
@@ -382,12 +397,15 @@ function Lobby({
   busy: boolean;
   onStart: () => void;
   onKick: (p: OnlinePlayer) => void;
+  onAvatar: (id: string) => void;
   onSaveRules: (c: OnlineConfig) => Promise<boolean>;
   toast: (m: string) => void;
 }) {
   const { sfx } = useApp();
   const [qr, setQr] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const me = players.find((p) => p.id === session.playerId);
   const [draft, setDraft] = useState(room.config);
   const link = inviteLink(room.code);
   const missing = Math.max(0, 3 - players.length);
@@ -466,7 +484,16 @@ function Lobby({
                 exit={{ opacity: 0, x: 30 }}
                 className="flex items-center gap-3 rounded-2xl bg-white/[0.05] p-2.5 pl-3 ring-1 ring-inset ring-white/10"
               >
-                <PlayerAvatar name={p.name} size={36} />
+                {p.id === session.playerId ? (
+                  <button type="button" onClick={() => setPicking(true)} aria-label="Trocar meu bonequinho" className="relative shrink-0 active:scale-95">
+                    <PlayerAvatar name={p.name} avatar={p.avatar} size={36} />
+                    <span className="absolute -right-1 -bottom-1 grid size-4.5 place-items-center rounded-full bg-acid text-ink">
+                      <Pencil className="size-2.5" />
+                    </span>
+                  </button>
+                ) : (
+                  <PlayerAvatar name={p.name} avatar={p.avatar} size={36} />
+                )}
                 <span className="min-w-0 flex-1 truncate text-[17px] font-extrabold">
                   {p.name}
                   {p.id === session.playerId && <span className="ml-2 text-[13px] font-semibold text-white/45">você</span>}
@@ -529,6 +556,17 @@ function Lobby({
         )}
       </div>
 
+      <AvatarPicker
+        open={picking}
+        value={me?.avatar}
+        taken={players.filter((p) => p.id !== session.playerId).map((p) => p.avatar)}
+        onClose={() => setPicking(false)}
+        onPick={(id) => {
+          setPicking(false);
+          onAvatar(id);
+        }}
+      />
+
       <Sheet open={rulesOpen} onClose={() => setRulesOpen(false)} title="Regras da sala">
         <div className="no-scrollbar max-h-[62dvh] overflow-y-auto pb-4">
           <OnlineRules value={draft} onChange={setDraft} />
@@ -560,6 +598,7 @@ function Voting({
   isHost,
   hostName,
   nameOf,
+  avatarOf,
   busy,
   onVote,
   onSkip,
@@ -571,8 +610,9 @@ function Voting({
   isHost: boolean;
   hostName: string;
   nameOf: (id: string) => string;
+  avatarOf: (id: string) => string | null | undefined;
   busy: boolean;
-  onVote: (target: string) => Promise<boolean>;
+  onVote: (target: string, comment?: string) => Promise<boolean>;
   onSkip: () => void;
   onClose: () => void;
 }) {
@@ -582,6 +622,7 @@ function Voting({
   const [selected, setSelected] = useState<string | null>(null);
   const [sentAt, setSentAt] = useState<string | null>(null); // id da pergunta em que votei
   const [sealing, setSealing] = useState(false);
+  const [comment, setComment] = useState('');
   const firstQ = useRef(q.id);
 
   useEffect(() => {
@@ -604,7 +645,7 @@ function Voting({
     if (!selected || sealing) return;
     setSealing(true);
     sfx('confirm', [10, 30, 18]);
-    const ok = await onVote(selected);
+    const ok = await onVote(selected, comment);
     if (!ok) {
       setSealing(false);
       return;
@@ -673,7 +714,7 @@ function Voting({
               const done = room.voted_ids.includes(id);
               return (
                 <li key={id} className={`flex items-center gap-2 rounded-xl p-2 ${done ? 'bg-white/[0.07]' : 'bg-white/[0.03]'}`}>
-                  <PlayerAvatar name={nameOf(id)} size={26} />
+                  <PlayerAvatar name={nameOf(id)} avatar={avatarOf(id)} size={26} />
                   <span className={`min-w-0 flex-1 truncate text-[14px] font-bold ${done ? '' : 'text-white/45'}`}>{nameOf(id)}</span>
                   {done ? <Check className="size-4 text-acid" strokeWidth={3} /> : <Loader2 className="size-4 animate-spin text-white/35" />}
                 </li>
@@ -716,12 +757,13 @@ function Voting({
                     activeSel ? 'bg-acid text-ink shadow-[0_5px_0_0_var(--color-acid-deep)]' : 'bg-white/[0.06] text-white ring-1 ring-white/10'
                   }`}
                 >
-                  <PlayerAvatar name={nameOf(id)} size={32} />
+                  <PlayerAvatar name={nameOf(id)} avatar={avatarOf(id)} size={32} />
                   <span className="min-w-0 flex-1 truncate text-[16px] font-extrabold">{nameOf(id)}</span>
                 </motion.button>
               );
             })}
           </div>
+          <CommentField show={Boolean(selected)} value={comment} onChange={setComment} targetName={selected ? nameOf(selected) : undefined} />
           <div className="safe-bottom safe-x fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md bg-gradient-to-t from-ink via-ink/95 to-transparent pt-8">
             <Button size="lg" block disabled={!selected || sealing} sound={null} onClick={() => void confirm()}>
               {sealing ? 'Enviando…' : selected ? 'Confirmar voto' : 'Toque em alguém'}

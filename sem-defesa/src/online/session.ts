@@ -27,6 +27,7 @@ export function saveSession(store: KeyValueStore, s: OnlineSession | null) {
 
 export interface OnlineProfile {
   name: string;
+  avatar?: string;
   config: OnlineConfig;
 }
 
@@ -36,6 +37,7 @@ export const DEFAULT_ONLINE_CONFIG: OnlineConfig = {
   allowSelfVote: false,
   includeHeavy: false,
   menOnly: false,
+  drinking: false,
   categories: DEFAULT_CATEGORIES,
 };
 
@@ -46,6 +48,7 @@ export function loadProfile(store: KeyValueStore): OnlineProfile {
     const p = raw ? (JSON.parse(raw) as Partial<OnlineProfile>) : {};
     return {
       name: typeof p.name === 'string' ? p.name : '',
+      avatar: typeof p.avatar === 'string' ? p.avatar : undefined,
       config: { ...DEFAULT_ONLINE_CONFIG, ...(p.config ?? {}) },
     };
   } catch {

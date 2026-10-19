@@ -1,4 +1,4 @@
-import type { GameMode, Question, RoundResult, Tally, Vote } from '../../types';
+import type { GameMode, Question, RoundResult, Tally, Vote, VoteComment } from '../../types';
 
 /** Conta votos apenas para candidatos válidos; todos os candidatos aparecem (mesmo com 0). */
 export function tallyVotes(votes: Vote[], candidateIds: string[]): Tally {
@@ -23,6 +23,7 @@ export function buildRoundResult(args: {
   mode: GameMode;
   tally: Tally;
   candidateIds: string[];
+  comments?: VoteComment[];
 }): RoundResult {
   const { topIds, topCount } = topOfTally(args.tally);
   const totalVotes = Object.values(args.tally).reduce((a, b) => a + b, 0);
@@ -39,7 +40,24 @@ export function buildRoundResult(args: {
     isTie,
     eliminatedId,
     candidateIds: args.candidateIds.slice(),
+    ...(args.comments && args.comments.length ? { comments: args.comments } : {}),
   };
+}
+
+export const MAX_COMMENT_LENGTH = 80;
+
+/** Limpa a justificativa: sem espaços sobrando e no máximo 80 letras. */
+export function cleanComment(text: string | undefined | null): string | undefined {
+  const t = (text ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_COMMENT_LENGTH);
+  return t || undefined;
+}
+
+/** Justificativas sem a ordem de votação (ordem alfabética), para ninguém deduzir quem escreveu. */
+export function anonymousComments(votes: Vote[], candidateIds: string[]): VoteComment[] {
+  return votes
+    .filter((v) => v.comment && candidateIds.includes(v.targetId))
+    .map((v) => ({ targetId: v.targetId, text: v.comment! }))
+    .sort((a, b) => a.text.localeCompare(b.text, 'pt-BR'));
 }
 
 /** Ordena candidatos por votos (desc), preservando a ordem original no empate. */

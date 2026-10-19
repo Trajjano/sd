@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ArrowRight, FastForward, Trophy } from 'lucide-react';
+import { ArrowRight, FastForward, MessageSquareQuote, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RoundResult } from '../../types';
 import { roundMessage } from '../../game/rules/messages';
@@ -9,6 +9,8 @@ import { FlipCard } from '../../components/cards/Cards';
 import { Confetti, CountUp, Stamp } from '../../components/animations/Effects';
 import { PlayerAvatar } from '../../components/ui/PlayerAvatar';
 import { joinNames, plural } from '../../utils/text';
+import { roundDrinks } from '../../game/rules/drinking';
+import { DrinkCalls } from '../../components/ui/DrinkCalls';
 
 type Stage = 'suspense' | 'flipping' | 'final';
 
@@ -23,6 +25,8 @@ export function RevealView({
   voterCount,
   onNext,
   waitingFor,
+  avatarOf,
+  drinking,
 }: {
   result: RoundResult;
   nameOf: (id: string) => string;
@@ -30,6 +34,8 @@ export function RevealView({
   voterCount: number;
   onNext?: () => void;
   waitingFor?: string;
+  avatarOf?: (id: string) => string | null | undefined;
+  drinking?: boolean;
 }) {
   const { sfx, reduced } = useApp();
   const [stage, setStage] = useState<Stage>('suspense');
@@ -169,10 +175,11 @@ export function RevealView({
                 )}
                 {message}
               </motion.p>
+              {drinking && <DrinkCalls calls={roundDrinks(result)} nameOf={nameOf} />}
             </div>
           )}
 
-          <div className={`grid ${cols} gap-2.5 pb-28`}>
+          <div className={`grid ${cols} gap-2.5`}>
             {(final ? [...result.topIds, ...order.filter((id) => !result.topIds.includes(id))] : order).map((id) => {
               const votes = result.tally[id] ?? 0;
               const isTop = result.topIds.includes(id);
@@ -206,7 +213,7 @@ export function RevealView({
                           final && isTop ? 'ring-4 ring-acid ring-inset' : ''
                         }`}
                       >
-                        <PlayerAvatar name={nameOf(id)} size={order.length > 6 ? 28 : 34} />
+                        <PlayerAvatar name={nameOf(id)} avatar={avatarOf?.(id)} size={order.length > 6 ? 28 : 34} />
                         <span className="w-full truncate text-[14px] font-extrabold text-ink">{nameOf(id)}</span>
                         <span className="display flex items-baseline gap-1 text-ink">
                           {shown ? (
@@ -233,6 +240,32 @@ export function RevealView({
               );
             })}
           </div>
+
+          {final && result.comments && result.comments.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-6"
+              aria-label="Justificativas"
+            >
+              <h3 className="label mb-2 flex items-center gap-2 text-white/55">
+                <MessageSquareQuote className="size-4 text-acid" /> Por que votaram (anônimo)
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {result.comments.map((c, i) => (
+                  <li key={i} className="flex items-start gap-3 rounded-2xl bg-white/[0.05] p-3 ring-1 ring-inset ring-white/10">
+                    <PlayerAvatar name={nameOf(c.targetId)} avatar={avatarOf?.(c.targetId)} size={30} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12px] font-bold text-white/45">sobre {nameOf(c.targetId)}</div>
+                      <p className="text-[15px] font-semibold leading-snug break-words text-white">“{c.text}”</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </motion.section>
+          )}
+          <div className="h-28" />
         </div>
       )}
 

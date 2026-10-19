@@ -40,6 +40,8 @@ export interface OnlineConfig {
   categories: CategoryId[];
   /** Mistura o pacote Resenha dos caras. */
   menOnly?: boolean;
+  /** Modo bebida. */
+  drinking?: boolean;
 }
 
 export interface OnlineRoom {
@@ -62,6 +64,7 @@ export interface OnlineRoom {
 export interface OnlinePlayer {
   id: string;
   name: string;
+  avatar: string | null;
   seat: number;
   left_at: string | null;
 }
@@ -104,12 +107,12 @@ const toSession = (c: Creds, name: string): OnlineSession => ({
 });
 
 export const online = {
-  async createRoom(name: string, config: OnlineConfig) {
-    const c = await call<Creds>('sd_create_room', { p_name: name, p_config: config });
+  async createRoom(name: string, config: OnlineConfig, avatar?: string) {
+    const c = await call<Creds>('sd_create_room', { p_name: name, p_config: config, p_avatar: avatar ?? null });
     return toSession(c, name.trim());
   },
-  async joinRoom(code: string, name: string) {
-    const c = await call<Creds>('sd_join_room', { p_code: code, p_name: name });
+  async joinRoom(code: string, name: string, avatar?: string) {
+    const c = await call<Creds>('sd_join_room', { p_code: code, p_name: name, p_avatar: avatar ?? null });
     return toSession(c, name.trim());
   },
   updateConfig: (s: OnlineSession, config: OnlineConfig) => call<void>('sd_update_config', { ...auth(s), p_config: config }),
@@ -117,7 +120,9 @@ export const online = {
   leave: (s: OnlineSession) => call<void>('sd_leave', auth(s)),
   start: (s: OnlineSession, deck: Question[]) => call<void>('sd_start', { ...auth(s), p_deck: deck }),
   skip: (s: OnlineSession) => call<void>('sd_skip', auth(s)),
-  vote: (s: OnlineSession, target: string) => call<void>('sd_vote', { ...auth(s), p_target: target }),
+  vote: (s: OnlineSession, target: string, comment?: string) =>
+    call<void>('sd_vote', { ...auth(s), p_target: target, p_comment: comment?.trim() ? comment : null }),
+  setAvatar: (s: OnlineSession, avatar: string) => call<void>('sd_set_avatar', { ...auth(s), p_avatar: avatar }),
   closeVoting: (s: OnlineSession) => call<void>('sd_close_voting', auth(s)),
   next: (s: OnlineSession) => call<void>('sd_next', auth(s)),
   finish: (s: OnlineSession) => call<void>('sd_finish', auth(s)),
@@ -128,7 +133,7 @@ export const online = {
       const db = supabase();
       const [r, p] = await Promise.all([
         db.from('rooms').select('*').eq('id', roomId).limit(1),
-        db.from('room_players').select('id,name,seat,left_at').eq('room_id', roomId).order('seat', { ascending: true }),
+        db.from('room_players').select('id,name,avatar,seat,left_at').eq('room_id', roomId).order('seat', { ascending: true }),
       ]);
       if (r.error) throw r.error;
       if (p.error) throw p.error;

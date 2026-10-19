@@ -20,6 +20,7 @@ import { tallyVotes, topOfTally } from './scoring/tally';
 import { summarizeMatch, recordMatch, emptyLifetimeStats } from './scoring/summary';
 import { roundMessage } from './rules/messages';
 import { seededRng } from '../utils/random';
+import { roundDrinks } from './rules/drinking';
 
 const rng = seededRng(42);
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `p${i}`);
@@ -154,6 +155,34 @@ describe('só homens', () => {
   it('só homens funciona mesmo sem outra categoria', () => {
     const v = validateSetup(input({ categories: [], menOnly: true }), QUESTIONS, (i) => `id${i}`);
     expect(v.ok).toBe(true);
+  });
+});
+
+describe('justificativas e modo bebida', () => {
+  it('guarda a justificativa limpa e publica em ordem alfabética, sem quem votou', () => {
+    let s = confirmHandoff(startVoting(createMatch(config(), QUESTIONS, rng)));
+    s = castVote(s, 'p0', 'p1', '  zebra   total ');
+    s = castVote(confirmHandoff(s), 'p1', 'p2', '');
+    s = castVote(confirmHandoff(s), 'p2', 'p1', 'abacaxi ' + 'x'.repeat(200));
+    s = castVote(confirmHandoff(s), 'p3', 'p1');
+    const c = s.history[0].comments!;
+    expect(c).toHaveLength(2);
+    expect(c[0].text.startsWith('abacaxi')).toBe(true);
+    expect(c[0].text.length).toBe(80);
+    expect(c[1]).toEqual({ targetId: 'p1', text: 'zebra total' });
+    expect(JSON.stringify(c)).not.toMatch(/voterId|p0|p3/);
+  });
+  it('regras de gole', () => {
+    const base = { round: 1, question: QUESTIONS[0], mode: 'secret' as const, tally: {}, candidateIds: [], eliminatedId: null };
+    expect(roundDrinks({ ...base, totalVotes: 4, topIds: ['a'], topCount: 4, isTie: false })[0].amount).toBe('vira o copo');
+    expect(roundDrinks({ ...base, totalVotes: 5, topIds: ['a'], topCount: 3, isTie: false })[0].amount).toBe('3 goles');
+    expect(roundDrinks({ ...base, totalVotes: 9, topIds: ['a'], topCount: 6, isTie: false })[0].amount).toBe('4 goles');
+    expect(roundDrinks({ ...base, totalVotes: 4, topIds: ['a', 'b'], topCount: 2, isTie: true })[0]).toMatchObject({ ids: ['a', 'b'], amount: '2 goles' });
+    expect(roundDrinks({ ...base, mode: 'survival', totalVotes: 4, topIds: ['a'], topCount: 2, isTie: false, eliminatedId: 'a' })[0].amount).toBe('vira o copo');
+  });
+  it('avatar escolhido vai para o jogador e nomes inválidos são ignorados', () => {
+    const v = validateSetup(input({ avatars: ['alien', 'xx', 'gato'] }), QUESTIONS, (i) => `id${i}`);
+    expect(v.ok && v.config.players.map((p) => p.avatar)).toEqual(['alien', undefined, 'gato']);
   });
 });
 

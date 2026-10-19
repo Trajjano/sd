@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { EyeOff, Flame, Hand, Megaphone, Play, Smartphone, Sparkles, Users, Wifi } from 'lucide-react';
+import { EyeOff, Flame, Hand, Megaphone, Play, Smartphone, Sparkles, Users, Wifi, Wine } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { BRAND } from '../../app/brand';
 import { Button } from '../../components/buttons/Button';
@@ -9,11 +9,16 @@ import { Screen, ScreenHeader } from '../../components/ui/Screen';
 const STEPS: { icon: ReactNode; title: string; text: string }[] = [
   { icon: <Users />, title: 'Juntem a galera', text: 'De 3 a 12 pessoas. Num celular só (passando de mão em mão) ou cada um no seu.' },
   { icon: <Sparkles />, title: 'Vira a carta', text: 'Aparece uma pergunta tipo "Quem sumiria da festa sem avisar?". Todo mundo lê.' },
-  { icon: <Smartphone />, title: 'Passa o celular', text: 'Cada pessoa vota em segredo em quem mais combina com a carta e passa adiante.' },
+  { icon: <Smartphone />, title: 'Passa o celular', text: 'Cada pessoa vota em segredo em quem mais combina com a carta e, se quiser, escreve o motivo. Os motivos aparecem na revelação sem o nome de quem escreveu.' },
   { icon: <Hand />, title: 'Revelação', text: 'Os votos viram um por um. O mais votado leva a carta. Empate? Todo mundo leva.' },
 ];
 
 const MODES: { icon: ReactNode; title: string; text: string }[] = [
+  {
+    icon: <Wine />,
+    title: 'Modo bebida',
+    text: 'Ligue ao montar a partida. A cada revelação: o mais votado bebe 1 gole por voto (máx. 4); unanimidade vira o copo; empate, cada um bebe 2; na sobrevivência, quem sai vira o copo. No fim, o mais votado da partida vira o copo e quem passou batido escolhe quem bebe. Quem não bebe ou vai dirigir troca por água ou refri.',
+  },
   {
     icon: <Wifi />,
     title: 'Cada um no seu celular',

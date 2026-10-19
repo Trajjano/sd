@@ -9,7 +9,11 @@ import { Button } from '../../components/buttons/Button';
 import { SectionTitle, Stepper, Toggle } from '../../components/ui/Controls';
 import { Screen, ScreenHeader } from '../../components/ui/Screen';
 import { CategoryGrid } from '../../components/setup/CategoryGrid';
-import { MenOnlyToggle } from '../../components/setup/MenOnlyToggle';
+import { DrinkingToggle, HeavyToggle, MenOnlyToggle } from '../../components/setup/ModeToggles';
+import { AvatarPicker } from '../../components/ui/AvatarPicker';
+import { PlayerAvatar } from '../../components/ui/PlayerAvatar';
+import { isAvatarId, nextFreeAvatar } from '../../data/avatars';
+import { getCategory } from '../../data/categories';
 import { uid } from '../../utils/random';
 import { plural } from '../../utils/text';
 
@@ -33,14 +37,25 @@ export function SetupScreen({
   const { settings, updateSettings, sfx } = useApp();
   const [errors, setErrors] = useState<SetupError[]>([]);
   const [shake, setShake] = useState(0);
+  const [picking, setPicking] = useState<number | null>(null);
+  // Um bonequinho por jogador (completa os que faltam sem repetir).
+  const avatars: string[] = [];
+  draft.names.forEach((_, i) => {
+    const a = draft.avatars?.[i];
+    avatars.push(isAvatarId(a) ? a : nextFreeAvatar([...avatars, ...(draft.avatars ?? [])], i * 5));
+  });
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   // chaves estáveis para animar a remoção do item certo
   const keys = useRef<string[]>([]);
   while (keys.current.length < draft.names.length) keys.current.push(uid());
   keys.current.length = draft.names.length;
 
+  // Guarda o rascunho mais recente para eventos rápidos em sequência não usarem uma cópia velha.
+  const latest = useRef(draft);
+  latest.current = draft;
   const set = (patch: Partial<SetupDraft>) => {
-    const next = { ...draft, ...patch };
+    const next = { ...latest.current, ...patch };
+    latest.current = next;
     onChange(next);
     if (errors.length) setErrors(revalidate(next));
   };
@@ -56,21 +71,21 @@ export function SetupScreen({
   const addPlayer = () => {
     if (draft.names.length >= MAX_PLAYERS) return;
     keys.current.push(uid());
-    set({ names: [...draft.names, ''] });
+    set({ names: [...latest.current.names, ''], avatars: [...avatars, nextFreeAvatar(avatars, draft.names.length * 5)] });
     window.setTimeout(() => inputs.current[draft.names.length]?.focus(), 40);
   };
 
   const removePlayer = (i: number) => {
     keys.current.splice(i, 1);
-    set({ names: draft.names.filter((_, j) => j !== i) });
+    set({ names: latest.current.names.filter((_, j) => j !== i), avatars: avatars.filter((_, j) => j !== i) });
   };
 
-  const allowedCategories = draft.categories.filter((c) => draft.includeHeavy || c !== 'semlimites');
+  const allowedCategories = draft.categories.filter((c) => (draft.includeHeavy || !getCategory(c).adult) && !getCategory(c).menOnly);
   const available = countQuestions(draft.menOnly ? [...allowedCategories, 'resenha'] : allowedCategories, draft.includeHeavy);
   const filledNames = draft.names.filter((n) => n.trim()).length;
 
   const start = () => {
-    const r = validateSetup({ ...draft, allowSelfVote: settings.allowSelfVote }, QUESTIONS, () => uid());
+    const r = validateSetup({ ...draft, avatars, allowSelfVote: settings.allowSelfVote }, QUESTIONS, () => uid());
     if (!r.ok) {
       setErrors(r.errors);
       setShake((s) => s + 1);
@@ -114,7 +129,14 @@ export function SetupScreen({
                       badIndexes.has(i) ? 'ring-danger' : 'ring-white/10 focus-within:ring-acid'
                     }`}
                   >
-                    <span className="label w-6 shrink-0 text-white/40">{String(i + 1).padStart(2, '0')}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPicking(i)}
+                      aria-label={`Trocar bonequinho do jogador ${i + 1}`}
+                      className="-ml-1 shrink-0 rounded-[30%] active:scale-95"
+                    >
+                      <PlayerAvatar name={name || `J${i}`} avatar={avatars[i]} size={40} />
+                    </button>
                     <input
                       ref={(el) => {
                         inputs.current[i] = el;
@@ -122,7 +144,7 @@ export function SetupScreen({
                       value={name}
                       maxLength={MAX_NAME_LENGTH + 4}
                       onChange={(e) => {
-                        const names = draft.names.slice();
+                        const names = latest.current.names.slice();
                         names[i] = e.target.value;
                         set({ names });
                       }}
@@ -256,8 +278,10 @@ export function SetupScreen({
         {/* Categorias */}
         <section className="mt-9">
           <SectionTitle aside={plural(available, 'carta', 'cartas')}>Categorias</SectionTitle>
-          <div className="mb-3">
+          <div className="mb-3 flex flex-col gap-2">
+            <DrinkingToggle checked={Boolean(draft.drinking)} categories={draft.categories} onChange={(drinking, categories) => set({ drinking, categories })} />
             <MenOnlyToggle checked={Boolean(draft.menOnly)} includeHeavy={draft.includeHeavy} onChange={(menOnly) => set({ menOnly })} />
+            <HeavyToggle checked={draft.includeHeavy} categories={draft.categories} onChange={(includeHeavy, categories) => set({ includeHeavy, categories })} />
           </div>
           <CategoryGrid selected={draft.categories} includeHeavy={draft.includeHeavy} onChange={(categories) => set({ categories })} />
           {errors
@@ -267,22 +291,23 @@ export function SetupScreen({
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {e.message}
               </p>
             ))}
-          <div className="mt-3">
-            <Toggle
-              checked={draft.includeHeavy}
-              onChange={(v) =>
-                set({
-                  includeHeavy: v,
-                  categories: v && !draft.categories.includes('semlimites') ? [...draft.categories, 'semlimites'] : draft.categories,
-                })
-              }
-              label="Conteúdo pesado (+18)"
-              description="Libera perguntas mais ácidas e a categoria Sem limites."
-              icon={<Flame />}
-            />
-          </div>
         </section>
       </div>
+
+      <AvatarPicker
+        open={picking !== null}
+        value={picking !== null ? avatars[picking] : null}
+        taken={avatars.filter((_, j) => j !== picking)}
+        title={picking !== null && draft.names[picking]?.trim() ? `Bonequinho de ${draft.names[picking].trim()}` : 'Escolha o bonequinho'}
+        onClose={() => setPicking(null)}
+        onPick={(id) => {
+          if (picking === null) return;
+          const next = avatars.slice();
+          next[picking] = id;
+          set({ avatars: next });
+          setPicking(null);
+        }}
+      />
 
       {/* Barra fixa com o botão de começar */}
       <div className="safe-bottom safe-x fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md bg-gradient-to-t from-ink via-ink/95 to-transparent pt-8">

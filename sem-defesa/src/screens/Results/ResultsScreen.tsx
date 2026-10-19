@@ -13,6 +13,8 @@ import { Scribble } from '../../components/ui/Logo';
 import { Screen } from '../../components/ui/Screen';
 import { CategorySticker } from '../../components/cards/Cards';
 import { plural } from '../../utils/text';
+import { finalDrinks } from '../../game/rules/drinking';
+import { DrinkCalls } from '../../components/ui/DrinkCalls';
 
 const MODE_LABEL = { secret: 'Votação secreta', open: 'Votação aberta', survival: 'Sobrevivência social' } as const;
 
@@ -69,6 +71,12 @@ export function ResultsScreen({
             {hasWinner && <Scribble className="absolute -bottom-3 left-0 h-5 w-full" delay={0.6} />}
           </div>
           <p className="mt-6 text-[17px] font-semibold leading-snug text-white/75">{head.subtitle}</p>
+          {match.config.drinking && summary.roundsPlayed > 0 && (
+            <div className="w-full">
+              <div className="label mt-5 text-[#ffb000]">Saideira</div>
+              <DrinkCalls calls={finalDrinks(summary)} nameOf={nameOf} delay={0.8} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -109,7 +117,7 @@ export function ResultsScreen({
                 />
                 <div className="relative flex items-center gap-3">
                   <span className="display w-7 text-center text-[24px] text-white/50">{row.rank}</span>
-                  <PlayerAvatar name={row.player.name} size={38} />
+                  <PlayerAvatar name={row.player.name} avatar={row.player.avatar} size={38} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[17px] font-extrabold">{row.player.name}</div>
                     <div className={`text-[13px] font-semibold ${champion ? 'text-acid' : 'text-white/55'}`}>

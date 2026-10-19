@@ -66,7 +66,7 @@ export function StatsScreen({ onBack, onStart, toast }: { onBack: () => void; on
                   className="flex items-center gap-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-inset ring-white/10"
                 >
                   <span className="display w-6 text-center text-[20px] text-white/45">{i + 1}</span>
-                  <PlayerAvatar name={p.name} size={36} />
+                  <PlayerAvatar name={p.name} avatar={p.avatar} size={36} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[16px] font-extrabold">{p.name}</div>
                     <div className="text-[12px] text-white/50">

@@ -103,6 +103,8 @@ export function loadSetup(store: KeyValueStore): SetupDraft {
     includeHeavy: isBool(raw.includeHeavy) ? raw.includeHeavy : false,
     mode: raw.mode === 'open' || raw.mode === 'survival' || raw.mode === 'secret' ? raw.mode : 'secret',
     menOnly: isBool(raw.menOnly) ? raw.menOnly : false,
+    drinking: isBool(raw.drinking) ? raw.drinking : false,
+    avatars: Array.isArray(raw.avatars) ? raw.avatars.map((a) => (typeof a === 'string' ? a : '')).slice(0, 12) : [],
   };
 }
 

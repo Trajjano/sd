@@ -70,6 +70,7 @@ export function recordMatch(stats: LifetimeStats, state: MatchState, now = Date.
     const prev = players[key] ?? { name: row.player.name, matches: 0, votesReceived: 0, roundsOnTop: 0, titles: 0 };
     players[key] = {
       name: row.player.name,
+      ...(row.player.avatar ? { avatar: row.player.avatar } : prev.avatar ? { avatar: prev.avatar } : {}),
       matches: prev.matches + 1,
       votesReceived: prev.votesReceived + row.votesReceived,
       roundsOnTop: prev.roundsOnTop + row.roundsOnTop,

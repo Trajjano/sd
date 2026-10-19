@@ -9,6 +9,8 @@ import segredos from './segredos';
 import absurdo from './absurdo';
 import semlimites from './semlimites';
 import resenha from './resenha';
+import baixaria from './baixaria';
+import bar from './bar';
 
 /** Banco completo. Para adicionar uma categoria, crie o arquivo e inclua aqui. */
 export const QUESTIONS: Question[] = [
@@ -21,6 +23,8 @@ export const QUESTIONS: Question[] = [
   ...segredos,
   ...absurdo,
   ...semlimites,
+  ...baixaria,
+  ...bar,
   ...resenha,
 ];
 

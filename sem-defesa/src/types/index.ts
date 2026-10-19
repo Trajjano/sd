@@ -10,6 +10,8 @@ export type CategoryId =
   | 'segredos'
   | 'absurdo'
   | 'semlimites'
+  | 'baixaria'
+  | 'bar'
   | 'resenha';
 
 export interface Category {
@@ -39,6 +41,8 @@ export interface Question {
 export interface Player {
   id: string;
   name: string;
+  /** Id do bonequinho (src/data/avatars.tsx). */
+  avatar?: string;
 }
 
 export type GameMode = 'secret' | 'open' | 'survival';
@@ -52,11 +56,20 @@ export interface MatchConfig {
   allowSelfVote: boolean;
   /** Grupo só de homens: mistura o pacote "Resenha dos caras" no baralho. */
   menOnly?: boolean;
+  /** Modo bebida: mostra quem bebe a cada revelação. */
+  drinking?: boolean;
 }
 
 export interface Vote {
   voterId: string;
   targetId: string;
+  /** Justificativa opcional (aparece anônima na revelação). */
+  comment?: string;
+}
+
+export interface VoteComment {
+  targetId: string;
+  text: string;
 }
 
 /** Contagem de votos por jogador (id -> votos). */
@@ -76,6 +89,8 @@ export interface RoundResult {
   eliminatedId: string | null;
   /** Candidatos que podiam receber votos nesta rodada. */
   candidateIds: string[];
+  /** Justificativas anônimas (ordem alfabética, para não entregar quem votou). */
+  comments?: VoteComment[];
 }
 
 export type MatchPhase =
@@ -123,10 +138,14 @@ export interface SetupDraft {
   includeHeavy: boolean;
   mode: GameMode;
   menOnly?: boolean;
+  drinking?: boolean;
+  /** Avatar de cada jogador, na mesma ordem de `names`. */
+  avatars?: string[];
 }
 
 export interface PlayerLifetime {
   name: string;
+  avatar?: string;
   matches: number;
   votesReceived: number;
   roundsOnTop: number;

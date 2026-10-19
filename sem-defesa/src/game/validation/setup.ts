@@ -2,6 +2,7 @@ import type { CategoryId, GameMode, MatchConfig, Player, Question } from '../../
 import { filterQuestions } from '../../data/questions';
 import { getCategory } from '../../data/categories';
 import { cleanName, normalizeName } from '../../utils/text';
+import { isAvatarId } from '../../data/avatars';
 
 export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 12;
@@ -17,6 +18,8 @@ export interface SetupInput {
   mode: GameMode;
   allowSelfVote: boolean;
   menOnly?: boolean;
+  drinking?: boolean;
+  avatars?: string[];
 }
 
 export type SetupErrorField = 'players' | 'rounds' | 'categories';
@@ -79,7 +82,10 @@ export function validateSetup(input: SetupInput, pool: Question[], makeId: (i: n
 
   if (errors.length) return { ok: false, errors };
 
-  const players: Player[] = cleaned.map((name, i) => ({ id: makeId(i), name }));
+  const players: Player[] = cleaned.map((name, i) => {
+    const avatar = input.avatars?.[i];
+    return { id: makeId(i), name, ...(isAvatarId(avatar) ? { avatar } : {}) };
+  });
   return {
     ok: true,
     config: {
@@ -90,6 +96,7 @@ export function validateSetup(input: SetupInput, pool: Question[], makeId: (i: n
       mode: input.mode,
       allowSelfVote: input.allowSelfVote,
       menOnly: Boolean(input.menOnly),
+      drinking: Boolean(input.drinking),
     },
   };
 }

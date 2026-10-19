@@ -1,6 +1,6 @@
 import type { MatchConfig, MatchState, Question, Tally } from '../../types';
 import { buildDeck, drawNext } from './deck';
-import { buildRoundResult, tallyVotes } from '../scoring/tally';
+import { anonymousComments, buildRoundResult, cleanComment, tallyVotes } from '../scoring/tally';
 import {
   GameRuleError,
   candidateIds,
@@ -70,7 +70,7 @@ export function confirmHandoff(state: MatchState): MatchState {
   return { ...state, phase: 'voting' };
 }
 
-export function castVote(state: MatchState, voterId: string, targetId: string): MatchState {
+export function castVote(state: MatchState, voterId: string, targetId: string, comment?: string): MatchState {
   assertPhase(state, 'voting');
   const expected = currentVoterId(state);
   if (state.votes.some((v) => v.voterId === voterId))
@@ -81,7 +81,8 @@ export function castVote(state: MatchState, voterId: string, targetId: string): 
   if (!eligibleTargets(state, voterId).includes(targetId))
     throw new GameRuleError('SELF_VOTE', 'Votar em si mesmo está desativado.');
 
-  const votes = [...state.votes, { voterId, targetId }];
+  const text = cleanComment(comment);
+  const votes = [...state.votes, { voterId, targetId, ...(text ? { comment: text } : {}) }];
   const voterIndex = state.voterIndex + 1;
   if (voterIndex < state.voterOrder.length) {
     return { ...state, votes, voterIndex, phase: 'handoff' };
@@ -123,6 +124,7 @@ function closeRound(state: MatchState): MatchState {
     mode: state.config.mode,
     tally: tallyVotes(state.votes, candidates),
     candidateIds: candidates,
+    comments: anonymousComments(state.votes, candidates),
   });
   const survivors = result.eliminatedId ? state.survivors.filter((id) => id !== result.eliminatedId) : state.survivors;
   return { ...state, phase: 'reveal', history: [...state.history, result], survivors };
@@ -179,7 +181,7 @@ export type MatchAction =
   | { type: 'skip' }
   | { type: 'startVoting' }
   | { type: 'confirmHandoff' }
-  | { type: 'vote'; voterId: string; targetId: string }
+  | { type: 'vote'; voterId: string; targetId: string; comment?: string }
   | { type: 'openTally'; tally: Tally }
   | { type: 'next' }
   | { type: 'finish' };
@@ -193,7 +195,7 @@ export function reduceMatch(state: MatchState, action: MatchAction, rng: Rng): M
     case 'confirmHandoff':
       return confirmHandoff(state);
     case 'vote':
-      return castVote(state, action.voterId, action.targetId);
+      return castVote(state, action.voterId, action.targetId, action.comment);
     case 'openTally':
       return submitOpenTally(state, action.tally);
     case 'next':

@@ -13,13 +13,14 @@ export function roomToMatch(room: OnlineRoom, players: OnlinePlayer[]): MatchSta
   return {
     id: room.id,
     config: {
-      players: shown.map((p) => ({ id: p.id, name: p.name })),
+      players: shown.map((p) => ({ id: p.id, name: p.name, ...(p.avatar ? { avatar: p.avatar } : {}) })),
       rounds: room.config.rounds,
       categories: room.config.categories,
       includeHeavy: room.config.includeHeavy,
       mode: room.config.mode,
       allowSelfVote: room.config.allowSelfVote,
       menOnly: room.config.menOnly,
+      drinking: room.config.drinking,
     },
     phase: room.status === 'finished' ? 'finished' : 'reveal',
     round: room.round,

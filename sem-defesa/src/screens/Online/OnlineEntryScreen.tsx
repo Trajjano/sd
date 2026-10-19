@@ -1,5 +1,8 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertTriangle, LogIn, Plus, Wifi } from 'lucide-react';
+import { AlertTriangle, LogIn, Pencil, Plus, Wifi } from 'lucide-react';
+import { AVATARS, isAvatarId } from '../../data/avatars';
+import { AvatarPicker } from '../../components/ui/AvatarPicker';
+import { PlayerAvatar } from '../../components/ui/PlayerAvatar';
 import { useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { online, onlineConfigured, type OnlineSession } from '../../online/api';
@@ -24,6 +27,8 @@ export function OnlineEntryScreen({
   const [profile] = useState(() => loadProfile(store));
   const [tab, setTab] = useState<Tab>(initialCode !== undefined ? 'join' : 'create');
   const [name, setName] = useState(profile.name);
+  const [avatar, setAvatar] = useState(() => (isAvatarId(profile.avatar) ? profile.avatar : AVATARS[Math.floor(Math.random() * AVATARS.length)].id));
+  const [picking, setPicking] = useState(false);
   const [code, setCode] = useState(initialCode ?? '');
   const [config, setConfig] = useState(profile.config);
   const [busy, setBusy] = useState(false);
@@ -40,8 +45,9 @@ export function OnlineEntryScreen({
     if (tab === 'create' && availableCards(config) === 0) return setError('Escolha pelo menos uma categoria.');
     setBusy(true);
     try {
-      const session = tab === 'create' ? await online.createRoom(cleanName, config) : await online.joinRoom(cleanCode, cleanName);
-      saveProfile(store, { name: cleanName, config });
+      const session =
+        tab === 'create' ? await online.createRoom(cleanName, config, avatar) : await online.joinRoom(cleanCode, cleanName, avatar);
+      saveProfile(store, { name: cleanName, avatar, config });
       sfx('confirm', [10, 30, 10]);
       onEnter(session);
     } catch (e) {
@@ -102,10 +108,26 @@ export function OnlineEntryScreen({
           </p>
 
           <div className="mt-5 flex flex-col gap-3">
-            <label className="block">
-              <span className="label mb-2 block text-white/55">Seu nome</span>
+            <div className="block">
+              <span className="label mb-2 block text-white/55">Seu bonequinho e nome</span>
+              <span className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPicking(true);
+                }}
+                aria-label="Escolher bonequinho"
+                className="relative shrink-0 rounded-[30%] active:scale-95"
+              >
+                <PlayerAvatar name={cleanName || 'Você'} avatar={avatar} size={56} />
+                <span className="absolute -right-1 -bottom-1 grid size-6 place-items-center rounded-full bg-acid text-ink shadow-[1px_1px_0_0_#000]">
+                  <Pencil className="size-3.5" />
+                </span>
+              </button>
               <input
                 id="online-name"
+                aria-label="Seu nome"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={MAX_NAME_LENGTH + 4}
@@ -113,9 +135,10 @@ export function OnlineEntryScreen({
                 autoCapitalize="words"
                 enterKeyHint={tab === 'join' ? 'next' : 'done'}
                 placeholder="Como te chamam"
-                className="w-full rounded-2xl bg-white/[0.05] px-4 py-3.5 text-[18px] font-bold text-white ring-1 ring-inset ring-white/10 placeholder:font-semibold placeholder:text-white/25 focus:ring-acid focus:outline-none"
+                className="min-w-0 flex-1 rounded-2xl bg-white/[0.05] px-4 py-3.5 text-[18px] font-bold text-white ring-1 ring-inset ring-white/10 placeholder:font-semibold placeholder:text-white/25 focus:ring-acid focus:outline-none"
               />
-            </label>
+              </span>
+            </div>
             {tab === 'join' && (
               <label className="block">
                 <span className="label mb-2 block text-white/55">Código da sala</span>
@@ -157,6 +180,16 @@ export function OnlineEntryScreen({
           )}
         </div>
       )}
+
+      <AvatarPicker
+        open={picking}
+        value={avatar}
+        onClose={() => setPicking(false)}
+        onPick={(id) => {
+          setAvatar(id);
+          setPicking(false);
+        }}
+      />
 
       {onlineConfigured && (
         <div className="safe-bottom safe-x fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md bg-gradient-to-t from-ink via-ink/95 to-transparent pt-8">

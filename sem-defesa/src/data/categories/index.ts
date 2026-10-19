@@ -83,6 +83,24 @@ export const CATEGORIES: Category[] = [
     adult: true,
   },
   {
+    id: 'baixaria',
+    name: 'Baixaria total',
+    tag: 'BAIXARIA',
+    description: 'Palavrão e sacanagem sem filtro. Só +18 e só se a mesa topar.',
+    color: '#111014',
+    ink: '#ff4d5e',
+    adult: true,
+  },
+  {
+    id: 'bar',
+    name: 'Mesa de bar',
+    tag: 'SAIDEIRA',
+    description: 'Chope, conta dividida e decisões ruins. Entra junto com o modo bebida.',
+    color: '#ffb000',
+    ink: '#1a1000',
+    adult: false,
+  },
+  {
     id: 'resenha',
     name: 'Resenha dos caras',
     tag: 'RESENHA',
@@ -102,7 +120,9 @@ export function getCategory(id: CategoryId): Category {
   return cat;
 }
 
-export const DEFAULT_CATEGORIES: CategoryId[] = CATEGORIES.filter((c) => !c.adult && !c.menOnly).map((c) => c.id);
+export const DEFAULT_CATEGORIES: CategoryId[] = CATEGORIES.filter((c) => !c.adult && !c.menOnly && c.id !== 'bar').map((c) => c.id);
+/** Categorias adultas, ligadas junto com o conteúdo pesado. */
+export const ADULT_CATEGORIES: CategoryId[] = CATEGORIES.filter((c) => c.adult).map((c) => c.id);
 
 /** Categorias que aparecem na grade de escolha. */
 export const PICKABLE_CATEGORIES = CATEGORIES.filter((c) => !c.menOnly);

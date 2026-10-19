@@ -57,6 +57,15 @@ create table if not exists public.room_votes (
   primary key (room_id, round, voter_id)
 );
 
+-- Colunas adicionadas depois da primeira versão (rodar de novo atualiza bancos antigos).
+alter table public.room_players add column if not exists avatar text;
+alter table public.room_votes   add column if not exists comment text;
+
+-- Versões antigas das funções (assinaturas mudaram).
+drop function if exists public.sd_create_room(text, jsonb);
+drop function if exists public.sd_join_room(text, text);
+drop function if exists public.sd_vote(uuid, uuid, text, uuid);
+
 -- ---------- Permissões (RLS) ----------
 
 alter table public.rooms          enable row level security;
@@ -89,6 +98,11 @@ begin
   return n;
 end $$;
 
+create or replace function public._clean_avatar(p text) returns text
+language sql immutable as $$
+  select case when p ~ '^[a-z0-9_-]{1,20}$' then p else null end
+$$;
+
 create or replace function public._clean_config(p jsonb) returns jsonb
 language plpgsql immutable as $$
 declare
@@ -103,6 +117,7 @@ begin
     'allowSelfVote', coalesce((p ->> 'allowSelfVote')::boolean, false),
     'includeHeavy', coalesce((p ->> 'includeHeavy')::boolean, false),
     'menOnly', coalesce((p ->> 'menOnly')::boolean, false),
+    'drinking', coalesce((p ->> 'drinking')::boolean, false),
     'categories', coalesce(p -> 'categories', '[]'::jsonb)
   );
 end $$;
@@ -171,6 +186,7 @@ declare
   top_ids jsonb;
   is_tie boolean;
   eliminated text;
+  comments jsonb;
 begin
   select * into r from rooms where id = p_room;
 
@@ -195,6 +211,13 @@ begin
     top_ids := '[]'::jsonb;
   end if;
 
+  -- Justificativas sem quem escreveu, em ordem alfabética (não entrega a ordem de votação).
+  select coalesce(jsonb_agg(jsonb_build_object('targetId', target_id::text, 'text', comment) order by comment), '[]'::jsonb)
+    into comments
+  from room_votes
+  where room_id = p_room and round = r.round and comment is not null and length(comment) > 0
+    and r.candidate_ids ? target_id::text;
+
   is_tie := jsonb_array_length(top_ids) > 1;
   eliminated := case
     when r.config ->> 'mode' = 'survival' and not is_tie and jsonb_array_length(top_ids) = 1
@@ -214,7 +237,8 @@ begin
       'topCount', top_count,
       'isTie', is_tie,
       'eliminatedId', eliminated,
-      'candidateIds', r.candidate_ids
+      'candidateIds', r.candidate_ids,
+      'comments', comments
     ))
   where id = p_room;
 end $$;
@@ -239,7 +263,7 @@ end $$;
 
 -- ---------- Funções públicas (chamadas pelo app) ----------
 
-create or replace function public.sd_create_room(p_name text, p_config jsonb)
+create or replace function public.sd_create_room(p_name text, p_config jsonb, p_avatar text default null)
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
@@ -264,14 +288,14 @@ begin
   end loop;
 
   insert into rooms (code, config) values (new_code, cfg) returning id into room_id;
-  insert into room_players (room_id, name, seat) values (room_id, n, 0) returning id into player_id;
+  insert into room_players (room_id, name, seat, avatar) values (room_id, n, 0, _clean_avatar(p_avatar)) returning id into player_id;
   insert into player_secrets (player_id, secret) values (player_id, secret);
   update rooms set host_id = player_id where id = room_id;
 
   return jsonb_build_object('room_id', room_id, 'code', new_code, 'player_id', player_id, 'secret', secret);
 end $$;
 
-create or replace function public.sd_join_room(p_code text, p_name text)
+create or replace function public.sd_join_room(p_code text, p_name text, p_avatar text default null)
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
@@ -290,8 +314,8 @@ begin
     raise exception 'Já tem alguém com esse nome na sala. Use um apelido.';
   end if;
 
-  insert into room_players (room_id, name, seat)
-  values (r.id, n, coalesce((select max(seat) + 1 from room_players where room_id = r.id), 0))
+  insert into room_players (room_id, name, seat, avatar)
+  values (r.id, n, coalesce((select max(seat) + 1 from room_players where room_id = r.id), 0), _clean_avatar(p_avatar))
   returning id into player_id;
   insert into player_secrets (player_id, secret) values (player_id, secret);
   perform _touch(r.id);
@@ -395,7 +419,7 @@ begin
   perform _touch(p_room);
 end $$;
 
-create or replace function public.sd_vote(p_room uuid, p_player uuid, p_secret text, p_target uuid)
+create or replace function public.sd_vote(p_room uuid, p_player uuid, p_secret text, p_target uuid, p_comment text default null)
 returns void
 language plpgsql security definer set search_path = public as $$
 declare r public.rooms := _auth(p_room, p_player, p_secret);
@@ -408,9 +432,20 @@ begin
     raise exception 'Votar em si mesmo está desativado.';
   end if;
 
-  insert into room_votes (room_id, round, voter_id, target_id) values (p_room, r.round, p_player, p_target);
+  insert into room_votes (room_id, round, voter_id, target_id, comment)
+  values (p_room, r.round, p_player, p_target, nullif(left(regexp_replace(trim(coalesce(p_comment, '')), '\s+', ' ', 'g'), 80), ''));
   update rooms set voted_ids = voted_ids || to_jsonb(p_player::text) where id = p_room;
   perform _maybe_close(p_room);
+  perform _touch(p_room);
+end $$;
+
+-- Trocar o bonequinho.
+create or replace function public.sd_set_avatar(p_room uuid, p_player uuid, p_secret text, p_avatar text)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare r public.rooms := _auth(p_room, p_player, p_secret);
+begin
+  update room_players set avatar = _clean_avatar(p_avatar) where id = p_player;
   perform _touch(p_room);
 end $$;
 
@@ -491,10 +526,11 @@ begin
       execute format('revoke insert, update, delete on public.rooms, public.room_players from %I', role_name);
       execute format('grant select on public.rooms, public.room_players to %I', role_name);
       execute format('grant execute on function
-        public.sd_create_room(text, jsonb), public.sd_join_room(text, text),
+        public.sd_create_room(text, jsonb, text), public.sd_join_room(text, text, text),
+        public.sd_set_avatar(uuid, uuid, text, text),
         public.sd_update_config(uuid, uuid, text, jsonb), public.sd_kick(uuid, uuid, text, uuid),
         public.sd_leave(uuid, uuid, text), public.sd_start(uuid, uuid, text, jsonb),
-        public.sd_skip(uuid, uuid, text), public.sd_vote(uuid, uuid, text, uuid),
+        public.sd_skip(uuid, uuid, text), public.sd_vote(uuid, uuid, text, uuid, text),
         public.sd_close_voting(uuid, uuid, text), public.sd_next(uuid, uuid, text),
         public.sd_finish(uuid, uuid, text), public.sd_back_to_lobby(uuid, uuid, text)
         to %I', role_name);
