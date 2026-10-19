@@ -1,7 +1,7 @@
 {
   "name": "sem-defesa",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "SEM DEFESA — party game de votação entre amigos, mobile-first e offline.",
   "scripts": {
