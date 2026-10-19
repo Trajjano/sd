@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/bricolage-grotesque/wdth.css';
+@import '@fontsource/space-mono/400.css';
+@import '@fontsource/space-mono/700.css';
+
+@theme {
+  --color-ink: #0b0910;
+  --color-night: #141019;
+  --color-plum: #24103d;
+  --color-grape: #4a1f80;
+  --color-violet: #7a3cf0;
+  --color-acid: #d4ff2a;
+  --color-acid-deep: #a9d400;
+  --color-paper: #f4f1e8;
+  --color-paper-shade: #e6e0d0;
+  --color-coal: #16131c;
+  --color-danger: #ff4d5e;
+
+  --font-display: 'Bricolage Grotesque Variable', 'Arial Black', system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.25, 1.15);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background: var(--color-ink);
+    color: #fff;
+    font-family: var(--font-display);
+    font-variation-settings: 'wdth' 100;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+  }
+  button {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-acid);
+    outline-offset: 3px;
+    border-radius: 12px;
+  }
+  input {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /* Fundo: gradiente roxo + grão sutil. */
+  .bg-stage {
+    background:
+      radial-gradient(120% 60% at 50% -10%, rgb(74 31 128 / 0.55), transparent 60%),
+      radial-gradient(90% 50% at 100% 110%, rgb(122 60 240 / 0.18), transparent 60%),
+      var(--color-ink);
+  }
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    opacity: 0.07;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .safe-x {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .safe-top {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .safe-bottom {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-variation-settings: 'wdth' 75;
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+  }
+  .label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* Papel da carta com textura de fibra e pontos de impressão. */
+  .card-paper {
+    background:
+      radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.05) 1px, transparent 1.5px) 0 0 / 7px 7px,
+      linear-gradient(170deg, #fbf9f2, var(--color-paper) 55%, var(--color-paper-shade));
+    color: #111014;
+  }
+  .card-back {
+    background:
+      repeating-linear-gradient(-45deg, transparent 0 14px, rgb(212 255 42 / 0.07) 14px 16px),
+      radial-gradient(120% 90% at 30% 10%, #5a259a, var(--color-plum) 70%);
+  }
+  .card-shadow {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.5) inset,
+      0 30px 60px -20px rgb(0 0 0 / 0.75),
+      0 12px 24px -12px rgb(74 31 128 / 0.6);
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
